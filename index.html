@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#020610" />
+  <title>JARVIS // Hamburg Core V0.3</title>
+  <style>
+    :root{
+      --bg:#020610;--panel:rgba(5,15,31,.68);--panel2:rgba(3,9,20,.64);
+      --blue:#1ac8ff;--blue2:#68e5ff;--orange:#ff8a1f;--orange2:#ffc168;
+      --text:#e8f8ff;--muted:#83a8b8;--danger:#ff5e78;--ok:#49e9c1;
+      --line:rgba(26,200,255,.24)
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:radial-gradient(circle at 50% 35%,#08152a 0,#020610 55%,#010308 100%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    body{overflow-x:hidden}
+    canvas#stars{position:fixed;inset:0;z-index:0;opacity:.72}
+    .scanlines{pointer-events:none;position:fixed;inset:0;z-index:5;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.012) 0,rgba(255,255,255,.012) 1px,transparent 2px,transparent 5px);mix-blend-mode:screen}
+    .app{position:relative;z-index:2;min-height:100vh;display:grid;grid-template-columns:290px minmax(0,1fr) 340px;gap:16px;padding:16px}
+    .panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid rgba(26,200,255,.2);border-radius:22px;backdrop-filter:blur(18px);box-shadow:inset 0 0 32px rgba(26,200,255,.025),0 18px 70px rgba(0,0,0,.38)}
+    .left,.right{padding:17px;display:flex;flex-direction:column;gap:14px}
+    .brand{display:flex;align-items:center;gap:12px}.brand-dot{width:12px;height:12px;border-radius:50%;background:var(--orange);box-shadow:0 0 8px var(--orange),0 0 24px var(--orange);animation:pulse 1.8s infinite}.brand h1{margin:0;font-size:18px;letter-spacing:.28em;color:#fff}.sub{color:var(--muted);font-size:11px;letter-spacing:.13em;text-transform:uppercase}
+    .status{display:grid;gap:8px}.status-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px}.status-row span:last-child{color:var(--ok);text-align:right;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .quick{display:grid;gap:8px}
+    button,select{border:1px solid rgba(26,200,255,.28);background:rgba(26,200,255,.055);color:var(--text);border-radius:13px;padding:11px 12px;transition:.2s;font-weight:700}
+    button{cursor:pointer}button:hover{transform:translateY(-1px);border-color:rgba(255,138,31,.7);box-shadow:0 0 26px rgba(255,138,31,.09)}
+    .main{min-height:calc(100vh - 32px);display:grid;grid-template-rows:auto 1fr auto;padding:17px}.topline{display:flex;justify-content:space-between;align-items:center;padding:2px 5px 8px;color:var(--muted);font-size:11px;letter-spacing:.12em}
+    .core-wrap{display:grid;place-items:center;min-height:500px;position:relative}.core-hud{position:relative;width:min(61vw,620px);aspect-ratio:1;display:grid;place-items:center}.ring{position:absolute;border-radius:50%;border:1px solid rgba(26,200,255,.2);box-shadow:0 0 36px rgba(26,200,255,.04)}.ring.one{inset:4%;animation:spin 21s linear infinite;border-style:dashed}.ring.two{inset:11%;animation:spinReverse 14s linear infinite;border-color:rgba(255,138,31,.27)}.ring.three{inset:19%;border-color:rgba(26,200,255,.14)}.tick{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 90deg,transparent 0 8deg,rgba(26,200,255,.58) 8deg 9deg,transparent 9deg 38deg,rgba(255,138,31,.55) 38deg 39deg,transparent 39deg 68deg,rgba(26,200,255,.5) 68deg 69deg,transparent 69deg);mask:radial-gradient(circle,transparent 0 47%,#000 48% 50%,transparent 51%);opacity:.68;animation:spin 25s linear infinite}
+    .globe-shell{width:56%;aspect-ratio:1;border-radius:50%;position:relative;display:grid;place-items:center;background:radial-gradient(circle at 37% 31%,rgba(255,255,255,.15),transparent 9%),radial-gradient(circle at 50% 50%,rgba(26,200,255,.10),rgba(0,11,25,.86) 64%,rgba(0,0,0,.96));box-shadow:0 0 26px rgba(26,200,255,.28),0 0 72px rgba(26,200,255,.14),0 0 115px rgba(255,138,31,.08),inset 0 0 38px rgba(26,200,255,.12);overflow:hidden}#globe{width:100%;height:100%;display:block;filter:drop-shadow(0 0 9px rgba(26,200,255,.72))}.core-label{position:absolute;bottom:8%;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap}.core-label strong{display:block;font-size:14px;letter-spacing:.34em;color:#fff;text-shadow:0 0 12px var(--blue)}.core-label small{color:var(--orange2);letter-spacing:.15em}.listening .globe-shell{animation:corePulse .72s ease-in-out infinite alternate}
+    .chat{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.06);border-radius:17px;padding:13px;min-height:126px;max-height:200px;overflow:auto}.msg{margin:8px 0;line-height:1.44;font-size:14px}.msg.user{color:#fff}.msg.jarvis{color:#b9ecff}.msg .tag{color:var(--muted);font-size:9px;letter-spacing:.12em;margin-right:7px}.input-row{display:grid;grid-template-columns:1fr auto;gap:9px;margin-top:10px}input{width:100%;background:rgba(0,0,0,.28);color:white;border:1px solid rgba(26,200,255,.2);border-radius:13px;padding:13px;outline:none}input:focus{border-color:rgba(255,138,31,.58);box-shadow:0 0 0 3px rgba(255,138,31,.05)}.mic{width:52px;font-size:19px;padding:0;background:linear-gradient(145deg,rgba(26,200,255,.14),rgba(255,138,31,.10))}.mic.active{border-color:rgba(255,138,31,.9);box-shadow:0 0 26px rgba(255,138,31,.22);animation:micPulse .8s ease-in-out infinite alternate}.mic.error{border-color:rgba(255,94,120,.9);box-shadow:0 0 22px rgba(255,94,120,.18)}.mic-note{margin-top:7px;font-size:11px;color:var(--muted);line-height:1.45}.mic-note.ok{color:#aef5e2}.mic-note.bad{color:#ff9bb0}
+    .card{border:1px solid rgba(255,255,255,.07);border-radius:15px;padding:13px;background:rgba(0,0,0,.15)}.card .title{font-size:10px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-bottom:7px}.big{font-size:28px;font-weight:800;letter-spacing:-.04em}.small{font-size:12px;line-height:1.48;color:#bdd7e2}.wave{display:flex;gap:4px;height:30px;align-items:center}.wave i{width:3px;height:7px;background:linear-gradient(var(--blue),var(--orange));border-radius:4px;opacity:.55}.speaking .wave i{animation:wave .7s ease-in-out infinite alternate}.wave i:nth-child(2n){animation-delay:.12s}.wave i:nth-child(3n){animation-delay:.24s}.wave i:nth-child(4n){animation-delay:.36s}.footer-note{font-size:11px;color:#698e9c;line-height:1.5;margin-top:auto}.voice-tools{display:grid;grid-template-columns:1fr auto;gap:7px}.voice-tools select{min-width:0;width:100%;font-size:11px;background:#07111f}.voice-tools button{padding:9px 10px;font-size:11px}.news-list{display:grid;gap:8px}.news-item{padding-top:8px;border-top:1px solid rgba(255,255,255,.06)}.news-item:first-child{padding-top:0;border-top:0}.news-link{color:#cbefff;text-decoration:none;font-size:12px;line-height:1.35}.news-link:hover{color:var(--orange2)}.tiny{font-size:10px;color:var(--muted);margin-top:4px}.signal{height:6px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:7px}.signal>span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--orange));transition:width .08s}
+    @keyframes pulse{50%{opacity:.45;transform:scale(.72)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes spinReverse{to{transform:rotate(-360deg)}}@keyframes corePulse{to{transform:scale(1.025);box-shadow:0 0 42px rgba(26,200,255,.4),0 0 100px rgba(255,138,31,.18),inset 0 0 52px rgba(26,200,255,.18)}}@keyframes wave{from{height:5px;opacity:.25}to{height:28px;opacity:1}}@keyframes micPulse{from{transform:scale(1)}to{transform:scale(1.06)}}
+    @media(max-width:1050px){.app{grid-template-columns:1fr}.left,.right{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.brand,.footer-note{grid-column:1/-1}.main{order:-1}.core-hud{width:min(88vw,580px)}}
+    @media(max-width:650px){.app{padding:8px;gap:8px}.panel{border-radius:16px}.left,.right{grid-template-columns:1fr}.core-wrap{min-height:410px}.core-hud{width:96vw}.main{padding:11px}.topline{font-size:9px}.core-label{bottom:4%}}
+  </style>
+</head>
+<body>
+<canvas id="stars"></canvas><div class="scanlines"></div>
+<div class="app">
+  <aside class="panel left">
+    <div class="brand"><div class="brand-dot"></div><div><h1>JARVIS</h1><div class="sub">Hamburg Core</div></div></div>
+    <div class="status">
+      <div class="status-row"><span>System</span><span>ONLINE</span></div>
+      <div class="status-row"><span>Standort</span><span>HAMBURG</span></div>
+      <div class="status-row"><span>Ansprache</span><span>HERR MEISTER</span></div>
+      <div class="status-row"><span>Stimme</span><span id="voiceName">WIRD GELADEN</span></div>
+      <div class="status-row"><span>Mikrofon</span><span id="micStatusSide">PRÜFEN</span></div>
+    </div>
+    <div><div class="sub" style="margin-bottom:8px">Schnellzugriff</div><div class="quick">
+      <button data-command="wetter">Hamburg Wetter</button><button data-command="uhrzeit">Uhrzeit</button><button data-command="tag">Tag & Datum</button><button data-command="news">Hamburg News</button><button data-command="ferien">Hamburg Ferien</button><button data-command="feiertag">Nächster Feiertag</button><button id="micTestBtn">Mikrofon testen</button>
+    </div></div>
+    <div class="footer-note">Sag z. B. „Wie ist das Wetter?“, „Was gibt es Neues in Hamburg?“, „Wie spät ist es?“, „Wie geht es dir?“, „Mir ist langweilig“ oder „Erzähl einen Witz“.</div>
+  </aside>
+
+  <main class="panel main" id="mainPanel">
+    <div class="topline"><span>NEURAL VOICE INTERFACE // V0.3</span><span id="clockTop">--:--:--</span></div>
+    <section class="core-wrap"><div class="core-hud"><div class="ring one"></div><div class="ring two"></div><div class="ring three"></div><div class="tick"></div><div class="globe-shell"><canvas id="globe" width="520" height="520"></canvas></div><div class="core-label"><strong>HAMBURG NODE</strong><small id="voiceLinkLabel">VOICE LINK STANDBY</small></div></div></section>
+    <section><div class="chat" id="chat"></div><div class="input-row"><input id="textInput" autocomplete="off" placeholder="Befehl eingeben oder Mikrofon drücken …" /><button class="mic" id="micBtn" title="Mikrofon starten">🎙️</button></div><div class="mic-note" id="micNote">Mikrofon noch nicht geprüft. Klicke auf „Mikrofon testen“ oder 🎙️.</div></section>
+  </main>
+
+  <aside class="panel right">
+    <div class="card"><div class="title">Hamburg Zeit</div><div class="big" id="timeCard">--:--</div><div class="small" id="dateCard">---</div></div>
+    <div class="card"><div class="title">Wetterstatus</div><div class="big" id="weatherTemp">--°</div><div class="small" id="weatherText">Noch nicht abgefragt</div></div>
+    <div class="card"><div class="title">Hamburg News</div><div class="news-list" id="newsList"><div class="small">Noch nicht geladen.</div></div></div>
+    <div class="card"><div class="title">Männliche Stimme</div><div class="voice-tools"><select id="voiceSelect"><option>Stimmen werden geladen …</option></select><button id="voiceTestBtn">Test</button></div><div class="small" style="margin-top:7px">Jarvis bevorzugt automatisch eine deutschsprachige, tiefere Männerstimme. Du kannst sie hier wechseln.</div></div>
+    <div class="card"><div class="title">Voice Output</div><div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="small" id="voiceStatus">Bereit, Herr Meister.</div></div>
+    <div class="card"><div class="title">Mikrofon Diagnose</div><div class="small" id="micDiag">Noch nicht getestet.</div><div class="signal"><span id="micSignal"></span></div></div>
+  </aside>
+</div>
+<script>
+(() => {
+  'use strict';
+  const TZ='Europe/Berlin';
+  const HAMBURG={lat:53.5511,lon:9.9937,state:'HH'};
+  const NEWS_ENDPOINT='https://www.tagesschau.de/api2u/news/?regions=6';
+  const NEWS_FALLBACK_PAGE='https://www.tagesschau.de/inland/regional/hamburg';
+  const els={
+    chat:document.getElementById('chat'),textInput:document.getElementById('textInput'),micBtn:document.getElementById('micBtn'),micTestBtn:document.getElementById('micTestBtn'),mainPanel:document.getElementById('mainPanel'),voiceName:document.getElementById('voiceName'),voiceStatus:document.getElementById('voiceStatus'),voiceSelect:document.getElementById('voiceSelect'),voiceTestBtn:document.getElementById('voiceTestBtn'),micNote:document.getElementById('micNote'),micDiag:document.getElementById('micDiag'),micSignal:document.getElementById('micSignal'),micStatusSide:document.getElementById('micStatusSide'),voiceLinkLabel:document.getElementById('voiceLinkLabel'),newsList:document.getElementById('newsList')
+  };
+  let chosenVoice=null,allVoices=[],recognition=null,recognizing=false,microphonePermission='unknown',lastTranscript='',recognitionHandled=false,recognitionTimeout=null,lastNews=[];
+
+  const escapeHtml=(s='')=>String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const formatTime=()=>new Intl.DateTimeFormat('de-DE',{timeZone:TZ,hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date());
+  const formatDay=()=>new Intl.DateTimeFormat('de-DE',{timeZone:TZ,weekday:'long',day:'2-digit',month:'long',year:'numeric'}).format(new Date());
+  const todayISO=()=>new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  function addMessage(who,text){const d=document.createElement('div');d.className=`msg ${who}`;d.innerHTML=`<span class="tag">${who==='jarvis'?'JARVIS':'HERR MEISTER'}</span>${escapeHtml(text)}`;els.chat.appendChild(d);els.chat.scrollTop=els.chat.scrollHeight}
+
+  function germanVoiceScore(v){
+    const n=v.name.toLowerCase(); let s=0;
+    if(/^de(-|_)/i.test(v.lang))s+=80;
+    const male=['conrad','markus','hans','martin','daniel','stefan','thomas','david','ralf','yannick','eddy','male','männlich'];
+    const natural=['natural','premium','enhanced','online','neural'];
+    const female=['katja','anna','petra','vicki','hedda','female','weiblich'];
+    if(male.some(x=>n.includes(x)))s+=45;if(natural.some(x=>n.includes(x)))s+=18;if(female.some(x=>n.includes(x)))s-=35;if(v.default)s+=3;return s
+  }
+  function loadVoices(){
+    allVoices=speechSynthesis.getVoices().slice().sort((a,b)=>germanVoiceScore(b)-germanVoiceScore(a));if(!allVoices.length)return;
+    const saved=localStorage.getItem('jarvisVoice');chosenVoice=allVoices.find(v=>v.name===saved)||allVoices[0];
+    els.voiceSelect.innerHTML='';allVoices.filter(v=>/^de(-|_)/i.test(v.lang)).slice(0,20).forEach(v=>{const o=document.createElement('option');o.value=v.name;o.textContent=`${v.name} (${v.lang})`;o.selected=chosenVoice&&v.name===chosenVoice.name;els.voiceSelect.appendChild(o)});
+    if(!els.voiceSelect.options.length){allVoices.slice(0,20).forEach(v=>{const o=document.createElement('option');o.value=v.name;o.textContent=`${v.name} (${v.lang})`;o.selected=chosenVoice&&v.name===chosenVoice.name;els.voiceSelect.appendChild(o)})}
+    els.voiceName.textContent=chosenVoice?chosenVoice.name.toUpperCase().slice(0,23):'STANDARD';
+  }
+  loadVoices();speechSynthesis.onvoiceschanged=loadVoices;
+  els.voiceSelect.addEventListener('change',()=>{chosenVoice=allVoices.find(v=>v.name===els.voiceSelect.value)||chosenVoice;if(chosenVoice){localStorage.setItem('jarvisVoice',chosenVoice.name);els.voiceName.textContent=chosenVoice.name.toUpperCase().slice(0,23);speak('Stimme übernommen, Herr Meister.')}});
+  els.voiceTestBtn.addEventListener('click',()=>speak('Guten Tag, Herr Meister. Jarvis ist online und einsatzbereit.'));
+
+  function speak(text){
+    if(!('speechSynthesis' in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=.93;u.pitch=.78;u.volume=1;if(chosenVoice)u.voice=chosenVoice;
+    u.onstart=()=>{document.body.classList.add('speaking');els.voiceStatus.textContent='Spreche …'};u.onend=()=>{document.body.classList.remove('speaking');els.voiceStatus.textContent='Bereit, Herr Meister.'};u.onerror=()=>{document.body.classList.remove('speaking');els.voiceStatus.textContent='Sprachausgabe fehlgeschlagen.'};speechSynthesis.speak(u)
+  }
+  function reply(text,shouldSpeak=true){addMessage('jarvis',text);if(shouldSpeak)speak(text)}
+
+  async function fetchJSON(url,ms=9000){const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),ms);try{const r=await fetch(url,{cache:'no-store',signal:ctl.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json()}finally{clearTimeout(t)}}
+  function weatherCodeText(code){const map={0:'klarer Himmel',1:'überwiegend klar',2:'teilweise bewölkt',3:'bewölkt',45:'Nebel',48:'Reifnebel',51:'leichter Nieselregen',53:'Nieselregen',55:'starker Nieselregen',61:'leichter Regen',63:'Regen',65:'starker Regen',71:'leichter Schneefall',73:'Schneefall',75:'starker Schneefall',80:'leichte Regenschauer',81:'Regenschauer',82:'starke Regenschauer',95:'Gewitter',96:'Gewitter mit Hagel',99:'starkes Gewitter mit Hagel'};return map[code]||'wechselhaftes Wetter'}
+  async function getWeather(silent=false){try{const u=`https://api.open-meteo.com/v1/forecast?latitude=${HAMBURG.lat}&longitude=${HAMBURG.lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&timezone=${encodeURIComponent(TZ)}`;const j=await fetchJSON(u);const c=j.current;const desc=weatherCodeText(c.weather_code);document.getElementById('weatherTemp').textContent=`${Math.round(c.temperature_2m)}°C`;document.getElementById('weatherText').textContent=`${desc} · gefühlt ${Math.round(c.apparent_temperature)}°C · Wind ${Math.round(c.wind_speed_10m)} km/h`;return `Herr Meister, in Hamburg sind es aktuell ${Math.round(c.temperature_2m)} Grad. Es ist ${desc}. Gefühlt sind es ${Math.round(c.apparent_temperature)} Grad.`}catch(e){if(!silent)console.warn(e);return 'Herr Meister, die Live-Wetterdaten sind gerade nicht erreichbar. Die restlichen Systeme laufen weiter.'}}
+
+  function easterSunday(year){const f=Math.floor;const G=year%19,C=f(year/100),H=(C-f(C/4)-f((8*C+13)/25)+19*G+15)%30,I=H-f(H/28)*(1-f(29/(H+1))*f((21-G)/11)),J=(year+f(year/4)+I+2-C+f(C/4))%7,L=I-J,m=3+f((L+40)/44),d=L+28-31*f(m/4);return new Date(`${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}T12:00:00`)}
+  function addDays(date,n){const d=new Date(date);d.setDate(d.getDate()+n);return d}
+  function hamburgPublicHolidays(year){const e=easterSunday(year);return[
+    ['Neujahr',new Date(`${year}-01-01T12:00:00`)],['Karfreitag',addDays(e,-2)],['Ostermontag',addDays(e,1)],['Tag der Arbeit',new Date(`${year}-05-01T12:00:00`)],['Christi Himmelfahrt',addDays(e,39)],['Pfingstmontag',addDays(e,50)],['Tag der Deutschen Einheit',new Date(`${year}-10-03T12:00:00`)],['Reformationstag',new Date(`${year}-10-31T12:00:00`)],['1. Weihnachtstag',new Date(`${year}-12-25T12:00:00`)],['2. Weihnachtstag',new Date(`${year}-12-26T12:00:00`)]
+  ]}
+  async function getNextHoliday(){const now=new Date(`${todayISO()}T00:00:00`);const y=Number(todayISO().slice(0,4));const next=[...hamburgPublicHolidays(y),...hamburgPublicHolidays(y+1)].filter(x=>x[1]>=now).sort((a,b)=>a[1]-b[1])[0];const ds=new Intl.DateTimeFormat('de-DE',{timeZone:TZ,weekday:'long',day:'2-digit',month:'long',year:'numeric'}).format(next[1]);return `Herr Meister, der nächste gesetzliche Feiertag in Hamburg ist ${next[0]} am ${ds}.`}
+
+  const FERIEN_FALLBACK=[
+    {name:'Herbstferien',start:'2026-10-19',end:'2026-10-30'},{name:'Weihnachtsferien',start:'2026-12-21',end:'2027-01-01'},
+    {name:'Frühjahrsferien',start:'2027-03-01',end:'2027-03-12'},{name:'Himmelfahrt/Pfingsten',start:'2027-05-07',end:'2027-05-14'},{name:'Sommerferien',start:'2027-07-01',end:'2027-08-11'}
+  ];
+  async function getSchoolHoliday(){let arr=[];try{arr=await fetchJSON(`https://ferien-api.de/api/v1/holidays/${HAMBURG.state}`,8000)}catch(e){arr=FERIEN_FALLBACK}
+    const now=new Date(`${todayISO()}T00:00:00`);const norm=arr.map(x=>({name:x.name||'Ferien',s:new Date(String(x.start).slice(0,10)+'T00:00:00'),e:new Date(String(x.end).slice(0,10)+'T23:59:59')})).filter(x=>!Number.isNaN(x.s.getTime())&&x.e>=now).sort((a,b)=>a.s-b.s);const current=norm.find(x=>x.s<=now&&x.e>=now);const h=current||norm[0];if(!h)return 'Herr Meister, ich habe gerade keinen kommenden Hamburger Ferientermin gefunden.';const fmt=d=>new Intl.DateTimeFormat('de-DE',{timeZone:TZ,day:'2-digit',month:'long',year:'numeric'}).format(d);return current?`Herr Meister, in Hamburg sind gerade ${h.name}. Sie laufen bis ${fmt(h.e)}.`:`Herr Meister, die nächsten Hamburger Schulferien sind ${h.name}, vom ${fmt(h.s)} bis ${fmt(h.e)}.`}
+
+  function renderNews(items){els.newsList.innerHTML='';if(!items.length){els.newsList.innerHTML='<div class="small">Live-News konnten nicht geladen werden.</div>';return}items.slice(0,3).forEach(n=>{const wrap=document.createElement('div');wrap.className='news-item';const a=document.createElement('a');a.className='news-link';a.textContent=n.title||'Hamburg Meldung';a.href=n.url||NEWS_FALLBACK_PAGE;a.target='_blank';a.rel='noopener noreferrer';wrap.appendChild(a);if(n.date){const t=document.createElement('div');t.className='tiny';t.textContent=new Intl.DateTimeFormat('de-DE',{timeZone:TZ,hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}).format(new Date(n.date));wrap.appendChild(t)}els.newsList.appendChild(wrap)})}
+  async function getHamburgNews(silent=false){try{const j=await fetchJSON(NEWS_ENDPOINT,9000);const source=[...(Array.isArray(j.regional)?j.regional:[]),...(Array.isArray(j.news)?j.news:[])];const seen=new Set();lastNews=source.filter(n=>n&&n.title&&!seen.has(n.title)&&(seen.add(n.title),true)).slice(0,6).map(n=>({title:n.title,date:n.date||null,url:n.shareURL||n.detailsweb||NEWS_FALLBACK_PAGE}));if(!lastNews.length)throw new Error('Keine News');renderNews(lastNews);const spoken=lastNews.slice(0,3).map((n,i)=>`${i+1}: ${n.title}`).join('. ');return `Herr Meister, hier sind drei aktuelle Hamburg-Meldungen. ${spoken}.` }catch(e){if(!silent)console.warn(e);renderNews([]);return 'Herr Meister, die Live-Hamburg-News konnten gerade nicht direkt geladen werden. Über die News-Karte können Sie die Hamburg-Seite der Tagesschau öffnen.'}}
+
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  async function handleCommand(raw){const q=raw.trim();if(!q)return;addMessage('user',q);const x=q.toLowerCase().replace(/[?!.,]/g,'').replace(/ß/g,'ss');
+    if(/(news|nachrichten|was gibt es neues|was ist los in hamburg|neuigkeiten)/.test(x))return reply(await getHamburgNews());
+    if(/(wetter|temperatur|regnet|regen|kalt|warm|sonne)/.test(x))return reply(await getWeather());
+    if(/(uhr|uhrzeit|wie spaet|zeit ist)/.test(x))return reply(`Herr Meister, es ist ${formatTime().slice(0,5)} Uhr in Hamburg.`);
+    if(/(welcher tag|datum|heute fuer ein tag|was ist heute|welches datum)/.test(x))return reply(`Herr Meister, heute ist ${formatDay()}.`);
+    if(/(ferien|schulferien)/.test(x))return reply(await getSchoolHoliday());
+    if(/(feiertag|feiertage|fest|feste)/.test(x))return reply(await getNextHoliday());
+    if(/(wie geht|alles gut|wie laeuft)/.test(x))return reply(pick(['Ausgezeichnet, Herr Meister. Alle Systeme laufen stabil. Wie geht es Ihnen?','Bestens, Herr Meister. Hamburg Core ist online. Und bei Ihnen?','Mir geht es gut, Herr Meister. Ich bin bereit für Ihren nächsten Befehl.']));
+    if(/(was machst du|was tust du|womit beschaeftigst)/.test(x))return reply('Ich halte Wetter, Uhrzeit und Hamburg-Daten im Blick und warte auf Ihren nächsten Befehl, Herr Meister.');
+    if(/^(hallo|hi|hey|moin|servus|guten morgen|guten abend)/.test(x))return reply(pick(['Moin, Herr Meister. Jarvis ist online.','Guten Tag, Herr Meister. Was kann ich für Sie tun?','Jarvis meldet sich, Herr Meister. Ich höre.']));
+    if(/(wer bist du|dein name|was bist du)/.test(x))return reply('Ich bin Jarvis, Ihr persönlicher Hamburg-Assistent, Herr Meister. Wetter, Zeit, News, Ferien und ein wenig Smalltalk gehören bereits zu meinem Repertoire.');
+    if(/(wo bin ich|standort|welche stadt)/.test(x))return reply('Mein festgelegter Einsatzort ist Hamburg, Deutschland, Herr Meister.');
+    if(/(muede|schlafen|kaputt|erschoepft)/.test(x))return reply('Dann wäre Schlaf vermutlich der vernünftigste Befehl, Herr Meister. Ich kann auch morgen noch weiterentwickelt werden.');
+    if(/(langweilig|langeweile|was soll ich machen)/.test(x))return reply(pick(['Herr Meister, ich schlage etwas Kurzes vor: Musik an, fünf Minuten aufräumen oder ein kleines Projekt starten.','Langeweile erkannt, Herr Meister. Soll ich Ihnen lieber einen Witz erzählen oder die Hamburg-News vorlesen?','Herr Meister, Sie könnten mich testen. Fragen Sie nach Wetter, News oder lassen Sie mich einen Witz erzählen.']));
+    if(/(witz|lustig|bring mich zum lachen)/.test(x))return reply(pick(['Warum braucht Jarvis keinen Kaffee? Weil meine Prozesse schon auf Hochtouren laufen, Herr Meister.','Was macht ein Computer im Meer? Er surft. Sehr flach, Herr Meister, aber technisch korrekt.','Warum war der Kalender nervös? Seine Tage waren gezählt, Herr Meister.']));
+    if(/(danke|dankeschoen|korrekt|stark|nice)/.test(x))return reply(pick(['Jederzeit, Herr Meister.','Sehr gern, Herr Meister.','Dafür bin ich da, Herr Meister.']));
+    if(/(tschuess|ciao|gute nacht|bis spaeter)/.test(x))return reply('Bis später, Herr Meister. Jarvis bleibt in Bereitschaft.');
+    if(/(was kannst du|faehigkeiten|funktionen)/.test(x))return reply('Herr Meister, ich kann aktuell Hamburger Wetterdaten, Uhrzeit, Datum, Feiertage, Schulferien und aktuelle Hamburg-News abrufen. Außerdem beherrsche ich einfachen Smalltalk sowie Sprach-Ein- und Ausgabe.');
+    return reply('Diesen Satz kann ich noch nicht sinnvoll beantworten, Herr Meister. Für V0.3 bin ich auf Hamburg-Daten und einfache Alltagsgespräche spezialisiert.')
+  }
+
+  document.querySelectorAll('[data-command]').forEach(b=>b.addEventListener('click',()=>handleCommand(b.dataset.command)));
+  els.textInput.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=els.textInput.value;els.textInput.value='';handleCommand(v)}});
+
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  function setMicUI(state,message){els.micBtn.classList.remove('active','error');els.micNote.classList.remove('ok','bad');if(state==='listening'){els.micBtn.classList.add('active');els.micBtn.textContent='◼';els.micStatusSide.textContent='HÖRT ZU';els.micStatusSide.style.color='var(--orange2)';els.micNote.classList.add('ok');els.voiceLinkLabel.textContent='VOICE LINK LISTENING'}else if(state==='ok'){els.micBtn.textContent='🎙️';els.micStatusSide.textContent='BEREIT';els.micStatusSide.style.color='var(--ok)';els.micNote.classList.add('ok');els.voiceLinkLabel.textContent='VOICE LINK READY'}else if(state==='error'){els.micBtn.classList.add('error');els.micBtn.textContent='⚠️';els.micStatusSide.textContent='FEHLER';els.micStatusSide.style.color='var(--danger)';els.micNote.classList.add('bad');els.voiceLinkLabel.textContent='VOICE LINK ERROR'}else{els.micBtn.textContent='🎙️';els.micStatusSide.textContent='PRÜFEN';els.micStatusSide.style.color='var(--ok)';els.voiceLinkLabel.textContent='VOICE LINK STANDBY'}if(message)els.micNote.textContent=message}
+  function micErrorMessage(name){return({'not-allowed':'Mikrofonzugriff wurde blockiert. Erlauben Sie das Mikrofon in den Seiteneinstellungen und laden Sie Jarvis neu.','service-not-allowed':'Der Browser blockiert die Spracherkennung. Chrome oder Edge funktionieren dafür am zuverlässigsten.','audio-capture':'Kein nutzbares Mikrofon gefunden. Prüfen Sie Headset oder Systemeinstellungen.','no-speech':'Das Mikrofon ist aktiv, aber ich habe keine deutliche Sprache erkannt. Sprechen Sie erst, wenn „HÖRT ZU“ erscheint.','network':'Der Online-Spracherkennungsdienst ist gerade nicht erreichbar. Internetverbindung prüfen.','aborted':'Spracherkennung beendet.','language-not-supported':'Deutsch wird von diesem Browser-Spracherkennungsdienst nicht unterstützt.'}[name]||`Spracherkennungsfehler: ${name||'unbekannt'}.`)}
+
+  async function requestMicrophoneAccess(testSignal=false){if(!window.isSecureContext)throw new Error('INSECURE_CONTEXT');if(!navigator.mediaDevices?.getUserMedia)throw new Error('NO_GET_USER_MEDIA');let stream,audioCtx,source,analyser,raf;try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});microphonePermission='granted';const track=stream.getAudioTracks()[0];els.micDiag.textContent=`Zugriff erlaubt · ${track?.label||'Mikrofon erkannt'}`;setMicUI('ok','Mikrofonzugriff ist erlaubt. Drücken Sie 🎙️ und sprechen Sie, sobald „HÖRT ZU“ erscheint.');if(testSignal){audioCtx=new (window.AudioContext||window.webkitAudioContext)();source=audioCtx.createMediaStreamSource(stream);analyser=audioCtx.createAnalyser();analyser.fftSize=256;source.connect(analyser);const data=new Uint8Array(analyser.frequencyBinCount);const end=performance.now()+2200;await new Promise(resolve=>{const tick=()=>{analyser.getByteFrequencyData(data);const avg=data.reduce((a,b)=>a+b,0)/data.length;const pct=Math.max(2,Math.min(100,avg*1.5));els.micSignal.style.width=`${pct}%`;if(performance.now()<end)raf=requestAnimationFrame(tick);else resolve()};tick()});els.micDiag.textContent+= ' · Signaltest abgeschlossen';setTimeout(()=>els.micSignal.style.width='0%',900)}return true}catch(err){microphonePermission='denied';const n=err?.name||err?.message||'';if(n==='NotAllowedError'||n==='PermissionDeniedError')setMicUI('error','Mikrofon ist im Browser blockiert. Erlauben Sie den Zugriff in den Seiteneinstellungen.');else if(n==='NotFoundError'||n==='DevicesNotFoundError')setMicUI('error','Kein Mikrofon gefunden. Prüfen Sie das eingebaute Mikrofon oder Headset.');else if(n==='INSECURE_CONTEXT')setMicUI('error','Mikrofon benötigt HTTPS oder localhost. Auf GitHub Pages funktioniert HTTPS automatisch.');else setMicUI('error','Der Browser konnte nicht auf das Mikrofon zugreifen.');els.micDiag.textContent=`Mikrofonfehler: ${n||'unbekannt'}`;throw err}finally{if(raf)cancelAnimationFrame(raf);if(stream)stream.getTracks().forEach(t=>t.stop());if(audioCtx&&audioCtx.state!=='closed')audioCtx.close()}}
+  els.micTestBtn.addEventListener('click',async()=>{try{await requestMicrophoneAccess(true);reply('Mikrofontest abgeschlossen, Herr Meister. Das Gerät wurde erkannt.',false)}catch(e){reply('Der Mikrofontest ist fehlgeschlagen, Herr Meister. Die genaue Ursache steht rechts in der Diagnose.',false)}});
+
+  async function startListening(){if(!SR){setMicUI('error','Dieser Browser stellt Jarvis keine Spracherkennung bereit. Bitte Chrome oder Microsoft Edge benutzen.');els.micDiag.textContent='SpeechRecognition API fehlt.';return}if(!window.isSecureContext){setMicUI('error','Spracherkennung braucht HTTPS oder localhost. GitHub Pages liefert später automatisch HTTPS.');return}if(microphonePermission!=='granted'){try{await requestMicrophoneAccess(false)}catch(e){return}}speechSynthesis.cancel();lastTranscript='';recognitionHandled=false;els.textInput.value='';try{recognition.start()}catch(err){if(err?.name!=='InvalidStateError')setMicUI('error',`Startfehler: ${err?.message||'unbekannt'}`)}}
+  if(SR){recognition=new SR();recognition.lang='de-DE';recognition.interimResults=true;recognition.continuous=false;recognition.maxAlternatives=3;
+    recognition.onstart=()=>{recognizing=true;recognitionHandled=false;lastTranscript='';els.mainPanel.classList.add('listening');setMicUI('listening','Ich höre jetzt zu, Herr Meister. Sprechen Sie normal und deutlich.');els.micDiag.textContent='Spracherkennung aktiv · wartet auf Sprache …';els.voiceStatus.textContent='Ich höre zu …';clearTimeout(recognitionTimeout);recognitionTimeout=setTimeout(()=>{if(recognizing)recognition.stop()},14000)};
+    recognition.onspeechstart=()=>{els.micDiag.textContent='Sprache erkannt · analysiere …';els.voiceStatus.textContent='Sprache erkannt …'};
+    recognition.onresult=e=>{let fin='',interim='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i],t=r[0]?.transcript||'';if(r.isFinal)fin+=t;else interim+=t}lastTranscript=(fin||interim||lastTranscript).trim();els.textInput.value=lastTranscript;if(fin.trim()&&!recognitionHandled){recognitionHandled=true;const heard=fin.trim();els.textInput.value='';els.micDiag.textContent=`Erkannt: „${heard}“`;handleCommand(heard)}};
+    recognition.onnomatch=()=>{setMicUI('error','Audio ist angekommen, aber die Wörter waren nicht sicher erkennbar. Versuchen Sie einen kurzen Satz wie „Wie spät ist es?“');els.micDiag.textContent='Audio vorhanden · keine sichere Texterkennung.'};
+    recognition.onerror=e=>{clearTimeout(recognitionTimeout);const msg=micErrorMessage(e.error);els.micDiag.textContent=`SpeechRecognition: ${e.error||'unbekannt'}`;if(e.error==='aborted')return;setMicUI('error',msg);els.voiceStatus.textContent='Mikrofonfehler.';addMessage('jarvis',`Herr Meister, ${msg}`)};
+    recognition.onend=()=>{clearTimeout(recognitionTimeout);recognizing=false;els.mainPanel.classList.remove('listening');if(!recognitionHandled&&lastTranscript.trim()){recognitionHandled=true;const heard=lastTranscript.trim();els.textInput.value='';els.micDiag.textContent=`Erkannt: „${heard}“`;setMicUI('ok',`Verstanden: „${heard}“`);handleCommand(heard);return}if(!els.micBtn.classList.contains('error'))setMicUI('ok','Mikrofon bereit. Drücken Sie 🎙️ für den nächsten Befehl.');if(!speechSynthesis.speaking)els.voiceStatus.textContent='Bereit, Herr Meister.'};
+    els.micBtn.addEventListener('click',async()=>{if(recognizing)recognition.stop();else await startListening()});
+    document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target!==els.textInput&&!e.repeat&&!recognizing){e.preventDefault();startListening()}});document.addEventListener('keyup',e=>{if(e.code==='Space'&&e.target!==els.textInput&&recognizing){e.preventDefault();recognition.stop()}});
+    setMicUI('idle','Klicken Sie auf „Mikrofon testen“. Chrome oder Edge sind für die Spracheingabe am zuverlässigsten.')
+  }else{setMicUI('error','Dieser Browser unterstützt die benötigte Spracherkennung nicht. Bitte Chrome oder Microsoft Edge verwenden.');els.micDiag.textContent='SpeechRecognition API nicht verfügbar.';els.micBtn.addEventListener('click',()=>reply('Herr Meister, dieser Browser stellt mir keine Spracherkennung bereit. Bitte öffnen Sie Jarvis in Chrome oder Microsoft Edge.',false))}
+
+  function updateClock(){document.getElementById('clockTop').textContent=formatTime();document.getElementById('timeCard').textContent=formatTime().slice(0,5);document.getElementById('dateCard').textContent=formatDay()}updateClock();setInterval(updateClock,1000);
+
+  const sc=document.getElementById('stars'),sx=sc.getContext('2d');let stars=[];function resizeStars(){sc.width=innerWidth*devicePixelRatio;sc.height=innerHeight*devicePixelRatio;sc.style.width=innerWidth+'px';sc.style.height=innerHeight+'px';stars=Array.from({length:Math.min(180,Math.floor(innerWidth/7))},()=>({x:Math.random()*sc.width,y:Math.random()*sc.height,r:Math.random()*1.35+.2,a:Math.random()*.7+.15,v:Math.random()*.18+.03,o:Math.random()>.82}))}function drawStars(){sx.clearRect(0,0,sc.width,sc.height);for(const s of stars){s.y-=s.v;if(s.y<0){s.y=sc.height;s.x=Math.random()*sc.width}sx.beginPath();sx.fillStyle=s.o?`rgba(255,154,55,${s.a})`:`rgba(82,218,255,${s.a})`;sx.arc(s.x,s.y,s.r,0,Math.PI*2);sx.fill()}requestAnimationFrame(drawStars)}resizeStars();addEventListener('resize',resizeStars);drawStars();
+
+  const gc=document.getElementById('globe'),gx=gc.getContext('2d');let angle=0;function project(lat,lon,R,cx,cy){const la=lat*Math.PI/180,lo=lon*Math.PI/180+angle;let x=Math.cos(la)*Math.sin(lo),y=Math.sin(la),z=Math.cos(la)*Math.cos(lo);const tilt=.23,yy=y*Math.cos(tilt)-z*Math.sin(tilt),zz=y*Math.sin(tilt)+z*Math.cos(tilt),scale=.87+.13*(zz+1)/2;return{x:cx+x*R*scale,y:cy-yy*R*scale,z:zz}}function globeLine(points,color){gx.beginPath();let started=false;for(const p of points){if(p.z<-.20){started=false;continue}if(!started){gx.moveTo(p.x,p.y);started=true}else gx.lineTo(p.x,p.y)}gx.strokeStyle=color;gx.lineWidth=1.15;gx.stroke()}function drawGlobe(){const w=gc.width,h=gc.height,cx=w/2,cy=h/2,R=w*.43;gx.clearRect(0,0,w,h);const glow=gx.createRadialGradient(cx,cy,R*.2,cx,cy,R);glow.addColorStop(0,'rgba(26,200,255,.08)');glow.addColorStop(.72,'rgba(26,200,255,.02)');glow.addColorStop(1,'rgba(0,0,0,0)');gx.fillStyle=glow;gx.beginPath();gx.arc(cx,cy,R,0,Math.PI*2);gx.fill();for(let lat=-75;lat<=75;lat+=15){const pts=[];for(let lon=-180;lon<=180;lon+=4)pts.push(project(lat,lon,R,cx,cy));globeLine(pts,lat%30===0?'rgba(255,138,31,.38)':'rgba(26,200,255,.29)')}for(let lon=-180;lon<180;lon+=15){const pts=[];for(let lat=-90;lat<=90;lat+=3)pts.push(project(lat,lon,R,cx,cy));globeLine(pts,lon%30===0?'rgba(26,200,255,.43)':'rgba(26,200,255,.24)')}const hp=project(53.5511,9.9937,R,cx,cy);if(hp.z>-.2){gx.beginPath();gx.arc(hp.x,hp.y,4.3,0,Math.PI*2);gx.fillStyle='#ff9a37';gx.shadowBlur=18;gx.shadowColor='#ff8a1f';gx.fill();gx.shadowBlur=0;gx.font='bold 13px system-ui';gx.fillStyle='rgba(255,218,177,.95)';gx.fillText('HAMBURG',hp.x+10,hp.y-8)}angle+=.0032;requestAnimationFrame(drawGlobe)}drawGlobe();
+
+  addMessage('jarvis','System online. Moin, Herr Meister. Jarvis Hamburg Core V0.3 ist bereit.');
+  getWeather(true);getHamburgNews(true);setInterval(()=>getWeather(true),15*60*1000);setInterval(()=>getHamburgNews(true),10*60*1000);
+})();
+</script>
+</body>
+</html>
